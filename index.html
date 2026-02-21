@@ -573,38 +573,46 @@
         /* ========== RESPONSIVE ========== */
         @media (max-width: 768px) {
             .carousel-section {
-                min-height: 450px;
+                min-height: 480px;
                 padding: 20px 0;
+                overflow: hidden;
+                touch-action: pan-y;
             }
 
             .carousel-wrapper {
-                width: 200px;
-                height: 280px;
+                width: 280px;
+                height: 370px;
             }
 
             .carousel-item {
-                width: 185px;
-                height: 260px;
-                margin-left: -92.5px;
-                margin-top: -130px;
+                width: 260px;
+                height: 350px;
+                margin-left: -130px;
+                margin-top: -175px;
+                border-radius: 20px;
             }
 
             .carousel-nav.prev {
-                left: -25px;
+                left: -5px;
             }
 
             .carousel-nav.next {
-                right: -25px;
+                right: -5px;
             }
 
             .carousel-nav {
-                width: 36px;
-                height: 36px;
-                font-size: 1rem;
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+                opacity: 0.7;
             }
 
             .caption-content {
                 padding: 14px 20px;
+            }
+
+            .caption-box {
+                max-width: 90vw;
             }
 
             .music-btn {
@@ -617,27 +625,42 @@
             .header {
                 padding: 50px 15px 20px;
             }
+
+            .letter-section {
+                margin: 40px auto 60px;
+            }
         }
 
         @media (max-width: 480px) {
+            .carousel-section {
+                min-height: 420px;
+            }
+
             .carousel-wrapper {
-                width: 170px;
-                height: 240px;
+                width: 240px;
+                height: 320px;
             }
 
             .carousel-item {
-                width: 160px;
-                height: 225px;
-                margin-left: -80px;
-                margin-top: -112.5px;
+                width: 220px;
+                height: 300px;
+                margin-left: -110px;
+                margin-top: -150px;
+                border-radius: 16px;
             }
 
             .carousel-nav.prev {
-                left: -15px;
+                left: -5px;
             }
 
             .carousel-nav.next {
-                right: -15px;
+                right: -5px;
+            }
+
+            .carousel-nav {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
             }
 
             .music-btn .btn-text {
@@ -647,6 +670,24 @@
             .music-btn {
                 padding: 10px 12px;
                 border-radius: 50%;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .carousel-wrapper {
+                width: 210px;
+                height: 280px;
+            }
+
+            .carousel-item {
+                width: 190px;
+                height: 260px;
+                margin-left: -95px;
+                margin-top: -130px;
             }
         }
 
@@ -1088,42 +1129,106 @@
         // ============================================
         // DRAG / SWIPE INTERACTION
         // ============================================
+        let startY = 0;
+        let isHorizontalSwipe = null;
+
         function initDragEvents() {
             const carousel = document.getElementById('carousel');
+            const section = document.getElementById('carouselSection');
 
             // Mouse events
             carousel.addEventListener('mousedown', onDragStart);
             document.addEventListener('mousemove', onDragMove);
             document.addEventListener('mouseup', onDragEnd);
 
-            // Touch events
-            carousel.addEventListener('touchstart', onDragStart, { passive: true });
-            document.addEventListener('touchmove', onDragMove, { passive: true });
-            document.addEventListener('touchend', onDragEnd);
+            // Touch events - trên vùng carousel section rộng hơn
+            section.addEventListener('touchstart', onDragStart, { passive: false });
+            section.addEventListener('touchmove', onDragMove, { passive: false });
+            section.addEventListener('touchend', onDragEnd);
         }
 
         function onDragStart(e) {
             isDragging = true;
-            startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            isHorizontalSwipe = null;
+            if (e.type.includes('mouse')) {
+                startX = e.clientX;
+                startY = e.clientY;
+            } else {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            }
             dragDelta = 0;
             clearInterval(autoRotateInterval);
+
+            // Tắt transition để kéo mượt
+            document.querySelectorAll('.carousel-item').forEach(item => {
+                item.style.transition = 'filter 0.4s ease, box-shadow 0.4s ease';
+            });
         }
 
         function onDragMove(e) {
             if (!isDragging) return;
-            const currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-            dragDelta = currentX - startX;
+            let currentX, currentY;
+            if (e.type.includes('mouse')) {
+                currentX = e.clientX;
+                currentY = e.clientY;
+            } else {
+                currentX = e.touches[0].clientX;
+                currentY = e.touches[0].clientY;
+            }
+
+            const diffX = currentX - startX;
+            const diffY = currentY - startY;
+
+            // Xác định hướng vuốt lần đầu
+            if (isHorizontalSwipe === null && (Math.abs(diffX) > 8 || Math.abs(diffY) > 8)) {
+                isHorizontalSwipe = Math.abs(diffX) > Math.abs(diffY);
+            }
+
+            // Chỉ xử lý vuốt ngang
+            if (isHorizontalSwipe) {
+                if (e.cancelable) e.preventDefault();
+                dragDelta = diffX;
+
+                // Hiệu ứng kéo trực quan - xoay carousel theo ngón tay
+                const dragRotation = (dragDelta / window.innerWidth) * 60;
+                const carousel = document.getElementById('carousel');
+                carousel.style.transform = `rotateY(${dragRotation}deg)`;
+
+                // Hiệu ứng opacity cho ảnh kế tiếp
+                const progress = Math.min(Math.abs(dragDelta) / 80, 1);
+                const items = document.querySelectorAll('.carousel-item');
+                const nextIndex = dragDelta < 0
+                    ? (currentIndex + 1) % totalItems
+                    : (currentIndex - 1 + totalItems) % totalItems;
+                items.forEach((item, i) => {
+                    if (i === nextIndex) {
+                        item.style.filter = `brightness(${0.55 + progress * 0.55}) saturate(${0.6 + progress * 0.5})`;
+                    }
+                });
+            }
         }
 
         function onDragEnd() {
             if (!isDragging) return;
             isDragging = false;
 
-            if (Math.abs(dragDelta) > 50) {
+            // Reset carousel transform
+            const carousel = document.getElementById('carousel');
+            carousel.style.transform = '';
+
+            // Ngưỡng 30px trên mobile, dễ vuốt hơn
+            const threshold = window.innerWidth <= 768 ? 30 : 50;
+
+            if (Math.abs(dragDelta) > threshold && isHorizontalSwipe) {
                 rotateCarousel(dragDelta < 0 ? 1 : -1);
+            } else {
+                // Reset filter nếu không đủ ngưỡng
+                updateCarousel(true);
             }
 
             dragDelta = 0;
+            isHorizontalSwipe = null;
             startAutoRotate();
         }
 
@@ -1183,19 +1288,20 @@
             }
         }
 
-        // Tự động phát nhạc khi người dùng tương tác lần đầu
+        // Tự động phát nhạc khi người dùng tương tác lần đầu (bất kỳ thao tác nào)
         function autoPlayOnInteraction() {
             if (!musicStarted) {
                 startMusic();
             }
-            document.removeEventListener('click', autoPlayOnInteraction);
-            document.removeEventListener('touchstart', autoPlayOnInteraction);
-            document.removeEventListener('keydown', autoPlayOnInteraction);
+            // Gỡ tất cả listener sau lần đầu
+            ['click', 'touchstart', 'touchend', 'touchmove', 'keydown', 'scroll', 'mousedown', 'mousemove', 'wheel'].forEach(evt => {
+                document.removeEventListener(evt, autoPlayOnInteraction, true);
+            });
         }
 
-        document.addEventListener('click', autoPlayOnInteraction);
-        document.addEventListener('touchstart', autoPlayOnInteraction);
-        document.addEventListener('keydown', autoPlayOnInteraction);
+        ['click', 'touchstart', 'touchend', 'touchmove', 'keydown', 'scroll', 'mousedown', 'mousemove', 'wheel'].forEach(evt => {
+            document.addEventListener(evt, autoPlayOnInteraction, { once: true, capture: true });
+        });
 
         // ============================================
         // SCROLL REVEAL - LETTER SECTION
