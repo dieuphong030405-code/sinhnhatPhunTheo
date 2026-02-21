@@ -992,10 +992,8 @@
         // ============================================
         const totalItems = 6;
         let currentIndex = 0;
-        let autoRotateInterval = null;
         let isDragging = false;
         let startX = 0;
-        let currentRotation = 0;
         let dragDelta = 0;
         const angleStep = 360 / totalItems;
 
@@ -1115,28 +1113,11 @@
         function rotateCarousel(direction) {
             currentIndex = (currentIndex + direction + totalItems) % totalItems;
             updateCarousel();
-            resetAutoRotate();
         }
 
         function goToSlide(index) {
             currentIndex = index;
             updateCarousel();
-            resetAutoRotate();
-        }
-
-        // ============================================
-        // AUTO ROTATE
-        // ============================================
-        function startAutoRotate() {
-            autoRotateInterval = setInterval(() => {
-                currentIndex = (currentIndex + 1) % totalItems;
-                updateCarousel();
-            }, 4000);
-        }
-
-        function resetAutoRotate() {
-            clearInterval(autoRotateInterval);
-            startAutoRotate();
         }
 
         // ============================================
@@ -1171,7 +1152,6 @@
                 startY = e.touches[0].clientY;
             }
             dragDelta = 0;
-            clearInterval(autoRotateInterval);
 
             // Tắt transition để kéo mượt
             document.querySelectorAll('.carousel-item').forEach(item => {
@@ -1242,7 +1222,6 @@
 
             dragDelta = 0;
             isHorizontalSwipe = null;
-            startAutoRotate();
         }
 
         // ============================================
@@ -1306,14 +1285,14 @@
             if (!musicStarted) {
                 startMusic();
             }
-            // Gỡ tất cả listener sau lần đầu
-            ['click', 'touchstart', 'touchend', 'touchmove', 'keydown', 'scroll', 'mousedown', 'mousemove', 'wheel'].forEach(evt => {
-                document.removeEventListener(evt, autoPlayOnInteraction, true);
-            });
         }
 
-        ['click', 'touchstart', 'touchend', 'touchmove', 'keydown', 'scroll', 'mousedown', 'mousemove', 'wheel'].forEach(evt => {
-            document.addEventListener(evt, autoPlayOnInteraction, { once: true, capture: true });
+        // Dùng các event không capture để đảm bảo user gesture được trình duyệt công nhận
+        ['click', 'touchstart', 'touchend', 'keydown', 'mousedown'].forEach(evt => {
+            document.addEventListener(evt, function handler() {
+                autoPlayOnInteraction();
+                document.removeEventListener(evt, handler);
+            });
         });
 
         // ============================================
@@ -1365,7 +1344,6 @@
             createFloatingHearts();
             updateCarousel(false);
             initDragEvents();
-            startAutoRotate();
             initScrollReveal();
 
             // Thử tự động phát nhạc
